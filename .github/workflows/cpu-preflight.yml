@@ -37,7 +37,20 @@ jobs:
       - name: Install the published Transformers source revision
         run: |
           # Explicit isolated dependency override; CPU checks must pass.
-          /tmp/mimo-env/bin/python -m pip install --no-deps "https://github.com/huggingface/transformers/archive/f324707307757d9c0b8dac1c4462eceff911fa2f.zip"
+          /tmp/mimo-env/bin/python -m pip install --only-binary=tokenizers tokenizers==0.23.1 "https://github.com/huggingface/transformers/archive/f324707307757d9c0b8dac1c4462eceff911fa2f.zip"
+      - name: Audit explicit compatibility overrides
+        run: |
+          /tmp/mimo-env/bin/python - <<'PY'
+          import subprocess, os, sys
+          check=subprocess.run([sys.executable,'-m','pip','check'],capture_output=True,text=True)
+          lines=[line for line in check.stdout.splitlines() if line.strip()]
+          allowed=('sglang 0.5.19 has requirement transformers==5.12.1,','sglang 0.5.19 has requirement tokenizers==0.22.2,')
+          unexpected=[line for line in lines if not line.startswith(allowed) and line!='No broken requirements found.']
+          print(check.stdout)
+          with open(os.environ['GITHUB_STEP_SUMMARY'],'a') as f:
+              print('## Explicit metadata deviations',*lines,sep=chr(10),file=f)
+          if unexpected: raise RuntimeError(unexpected)
+          PY
       - name: CPU imports and image preprocessing
         run: |
           /tmp/mimo-env/bin/python - <<'PY'
