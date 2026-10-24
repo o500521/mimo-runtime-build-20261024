@@ -1,0 +1,40 @@
+name: Package pinned Blackfrost runtime
+on:
+  workflow_run:
+    workflows: ["CPU runtime preflight"]
+    types: [completed]
+  workflow_dispatch:
+permissions:
+  contents: read
+  packages: write
+jobs:
+  package:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Authenticate for this repository package
+        env:
+          GHCR_TOKEN: ${{ github.token }}
+        run: |
+          echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+      - name: Build pinned runtime without starting inference
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/runtime-build
+          cat > /tmp/runtime-build/Dockerfile <<'DOCKER'
+          FROM ghcr.io/o500521/mimo-runtime-build-20261024:cpu-a33b18d8
+          RUN python -c "from huggingface_hub import snapshot_download; snapshot_download('Blackfrost-AI/MiMo-V2.6-Pro-MOPD-Derisking-Intervention-Runtime',revision='d78419fc559d20a1546083b4b099e7aca7cbfab6',local_dir='/opt/blackfrost-runtime')"
+          RUN python /opt/blackfrost-runtime/scripts/verify_package.py && python /opt/blackfrost-runtime/scripts/materialize_overlay.py --output /opt/blackfrost-runtime/runtime-overlay && bash -n /opt/blackfrost-runtime/scripts/launch_pro_mopd.sh
+          LABEL org.opencontainers.image.description="Pinned Blackfrost runtime prepared and CPU checked. No checkpoint weights; no inference or intervention enabled."
+          CMD ["sleep","infinity"]
+          DOCKER
+          image="ghcr.io/o500521/mimo-runtime-build-20261024:blackfrost-d78419fc"
+          docker build -t "$image" /tmp/runtime-build
+          docker run --rm --entrypoint python "$image" /opt/blackfrost-runtime/scripts/verify_package.py
+          docker run --rm -e PYTHONPATH=/opt/blackfrost-runtime/runtime-overlay --entrypoint python "$image" /opt/mimo-runtime/cpu-smoke.py
+          docker push "$image"
+          echo '## Prepared Blackfrost runtime image' >> "$GITHUB_STEP_SUMMARY"
+          echo "$image" >> "$GITHUB_STEP_SUMMARY"
+          docker image inspect --format '{{json .RepoDigests}}' "$image" >> "$GITHUB_STEP_SUMMARY"
+          echo 'No model inference, GPU rental or intervention activation occurred. CPU checks do not validate GPU kernels or model quality.' >> "$GITHUB_STEP_SUMMARY"
