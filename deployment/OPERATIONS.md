@@ -13,9 +13,11 @@ This bundle does not rent machines, add credit or call a paid model API. The clo
 
 ## Approved pod: inspect first
 
-Fetch this public repository into the cloud pod. Its files contain no API keys or model weights. From `deployment/`:
+Fetch this public repository into **`/workspace/mimo-session`**, not the encrypted `/root`, because the checker script itself is bind-mounted into nested Docker. Its files contain no API keys or model weights:
 
 ```bash
+git clone https://github.com/o500521/mimo-runtime-build-20261024.git /workspace/mimo-session
+cd /workspace/mimo-session/deployment
 USER_APPROVED_GPU_START=1 bash bootstrap.sh preflight
 python runtime_session.py probe --approved
 ```
