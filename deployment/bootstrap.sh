@@ -7,7 +7,7 @@ if [[ "${USER_APPROVED_GPU_START:-0}" != "1" ]]; then
   exit 2
 fi
 mode="${1:-preflight}"
-image="ghcr.io/o500521/mimo-runtime-build-20261024:blackfrost-d78419fc"
+image="ghcr.io/o500521/mimo-runtime-build-20261024@sha256:90847d1411c17fafe42eed2a0b22aaf7baf77072fb8150cb0fdbb5344e2f9dc1"
 checkpoint="/workspace/models/MiMo-V2.6-Pro-MOPD"
 case "$mode" in
   preflight)
