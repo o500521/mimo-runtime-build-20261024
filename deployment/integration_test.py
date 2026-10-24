@@ -106,6 +106,13 @@ def main():
         blocked_download=subprocess.run([sys.executable,session.__file__,'download','--approved','--provider-spend-cap-confirmed','--measured-mbps','8','--hourly-usd','16.72','--remaining-usd','10'],capture_output=True,text=True)
         assert blocked_download.returncode==3 and 'false' in blocked_download.stdout
         passed('insufficient allowance blocks full checkpoint download before executing the downloader')
+        calls=[]
+        with patch.object(sys,'argv',['runtime_session.py','download','--approved','--provider-spend-cap-confirmed','--measured-mbps','4000','--hourly-usd','16.72','--remaining-usd','40']), patch.object(session.subprocess,'run',side_effect=fake_docker) as download_run, patch.object(session,'validate_checkpoint',return_value=132) as shard_check:
+            session.main()
+            assert download_run.call_args.kwargs['env']['USER_APPROVED_GPU_START']=='1'
+            assert download_run.call_args.args[0][-1]=='download'
+            shard_check.assert_called_once_with(session.MODEL_DIR)
+        passed('approved and budget-fitting download -> shard validation; downloader and checkpoint explicitly simulated')
         hardware=[dict(name='NVIDIA RTX PRO 6000 Blackwell',capability=[12,0],memory_bytes=96_000_000_000) for _ in range(8)]
         validate_devices(hardware)
         for altered in [hardware[:7],[{**d,'memory_bytes':48_000_000_000} for d in hardware],[{**d,'capability':[9,0]} for d in hardware]]:
@@ -165,6 +172,11 @@ def main():
             state['fail']=False; page.locator('#check').click()
             expect(page.locator('#status')).to_contain_text('已連線')
             passed('upstream failure is visible and recovery/reconnect succeeds')
+            page.locator('#base').fill('http://127.0.0.1:30001/v1');page.locator('#check').click()
+            expect(page.locator('#status')).to_contain_text('無法連接模型 API')
+            page.locator('#base').fill('http://127.0.0.1:30000/v1');page.locator('#check').click()
+            expect(page.locator('#status')).to_contain_text('已連線')
+            passed('closed loopback port is reported as disconnected; restoring endpoint reconnects')
             try:
                 request_json('/models',{'base':'http://127.0.0.1:30000/v1','key':''},'https://example.invalid')
                 raise AssertionError('Foreign origin accepted')
