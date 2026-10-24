@@ -1,4 +1,6 @@
-ㄨㄛ我ㄉㄜon:
+name: CPU runtime preflight
+
+on:
   push:
     paths: [".github/workflows/cpu-preflight.yml"]
   workflow_dispatch:
