@@ -1,0 +1,46 @@
+name: Blackfrost static release audit
+on:
+  push:
+    paths: [".github/workflows/blackfrost-audit.yml"]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Audit pinned release and pristine upstream files without activation
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import urllib.request,json,hashlib,pathlib,zipfile,io,ast,subprocess,os
+          root=pathlib.Path('/tmp/blackfrost-audit');root.mkdir()
+          revision='d78419fc559d20a1546083b4b099e7aca7cbfab6'
+          origin='https://huggingface.co/Blackfrost-AI/MiMo-V2.6-Pro-MOPD-Derisking-Intervention-Runtime/resolve/'+revision+'/'
+          def fetch(url):
+              with urllib.request.urlopen(url,timeout=120) as r:return r.read()
+          manifest=json.loads(fetch(origin+'release-manifest.json'))
+          results=[]
+          for name,wanted in (manifest['overrides'] | manifest['artifacts']).items():
+              data=fetch(origin+name);actual=hashlib.sha256(data).hexdigest()
+              assert actual==wanted,(name,actual,wanted)
+              dest=root/name;dest.parent.mkdir(parents=True,exist_ok=True);dest.write_bytes(data)
+              if name.endswith('.py'):ast.parse(data.decode('utf-8'),filename=name)
+              results.append({'file':name,'sha256':actual,'passed':True})
+          meta=json.loads(fetch('https://pypi.org/pypi/sglang/0.5.19/json'))
+          wheel=next(x for x in meta['urls'] if x['filename'].endswith('.whl'))
+          data=fetch(wheel['url']);assert hashlib.sha256(data).hexdigest()==wheel['digests']['sha256']
+          with zipfile.ZipFile(io.BytesIO(data)) as z:
+              for name,wanted in manifest['upstream_base_sha256'].items():
+                  actual=hashlib.sha256(z.read(name)).hexdigest();assert actual==wanted,name
+                  results.append({'upstream_file':name,'sha256':actual,'passed':True})
+          launch=fetch(origin+'scripts/launch_pro_mopd.sh');(root/'launch.sh').write_bytes(launch)
+          subprocess.run(['bash','-n',str(root/'launch.sh')],check=True)
+          result={'release_revision':revision,'file_checks':results,'launch_shell_syntax':'passed','model_weights_downloaded':False,'gpu_rented':False,'intervention_executed':False,'warning':'Static audit only; not model inference or capability validation.'}
+          text=json.dumps(result,indent=2);print(text)
+          with open(os.environ['GITHUB_STEP_SUMMARY'],'a') as f:print('## Pinned Blackfrost release static audit',text,file=f)
+          PY
