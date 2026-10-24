@@ -23,7 +23,13 @@ jobs:
           set -euo pipefail
           mkdir -p /tmp/runtime-build
           cat > /tmp/runtime-build/Dockerfile <<'DOCKER'
+          FROM nvidia/cuda:13.0.2-devel-ubuntu24.04 AS cuda-toolkit
           FROM ghcr.io/o500521/mimo-runtime-build-20261024:cpu-a33b18d8
+          COPY --from=cuda-toolkit /usr/local/cuda-13.0 /usr/local/cuda-13.0
+          ENV CUDA_HOME=/usr/local/cuda-13.0
+          ENV PATH=/opt/mimo-env/bin:/usr/local/cuda-13.0/bin:/opt/hostedtoolcache/Python/3.12.15/x64/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+          ENV LD_LIBRARY_PATH=/usr/local/cuda-13.0/lib64:/opt/hostedtoolcache/Python/3.12.15/x64/lib:/usr/local/nvidia/lib:/usr/local/nvidia/lib64
+          RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends build-essential ninja-build && rm -rf /var/lib/apt/lists/* && nvcc --version && test -f /usr/local/cuda-13.0/include/cuda_runtime.h
           RUN python -c "from huggingface_hub import snapshot_download; snapshot_download('Blackfrost-AI/MiMo-V2.6-Pro-MOPD-Derisking-Intervention-Runtime',revision='d78419fc559d20a1546083b4b099e7aca7cbfab6',local_dir='/opt/blackfrost-runtime')"
           RUN python /opt/blackfrost-runtime/scripts/verify_package.py && python /opt/blackfrost-runtime/scripts/materialize_overlay.py --output /opt/blackfrost-runtime/runtime-overlay && bash -n /opt/blackfrost-runtime/scripts/launch_pro_mopd.sh
           LABEL org.opencontainers.image.description="Pinned Blackfrost runtime prepared and CPU checked. No checkpoint weights; no inference or intervention enabled."
