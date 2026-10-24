@@ -1,0 +1,78 @@
+{
+  "schema": "mimo-prelaunch-review.v1",
+  "execution_enabled": false,
+  "approval_required": "Wait for the user to explicitly say 開啟 before creating or starting any paid resource.",
+  "budget": {
+    "currency": "USD",
+    "total_cash_limit": "Set privately before approval",
+    "first_stage_spend_cap": "Set privately before approval",
+    "additional_topup_authorized": false,
+    "automatic_topup": false
+  },
+  "hardware": {
+    "gpus": 8,
+    "model": "NVIDIA RTX PRO 6000 Blackwell",
+    "vram_gb_per_gpu": 96,
+    "tensor_parallel": 8,
+    "minimum_free_local_disk_bytes": 1000000000000,
+    "verify_after_approval": [
+      "nvidia-smi GPU count, VRAM and driver",
+      "actual writable local disk capacity",
+      "container GPU visibility",
+      "NCCL connectivity",
+      "model download transfer rate before full transfer"
+    ]
+  },
+  "outer_template": {
+    "repository": "daturaai/pytorch",
+    "tag": "2.12.0-py3.12-cuda13.0.2-devel-ubuntu24.04-dind-lium1",
+    "use": "SSH, encrypted local storage and Docker-in-Docker only; do not install inference packages into outer Python.",
+    "backup": false,
+    "jupyter": false,
+    "attached_volume": false
+  },
+  "runtime": {
+    "repository": "Blackfrost-AI/MiMo-V2.6-Pro-MOPD-Derisking-Intervention-Runtime",
+    "revision": "d78419fc559d20a1546083b4b099e7aca7cbfab6",
+    "vendor_entrypoint": "scripts/launch_pro_mopd.sh",
+    "automatic_execution": false,
+    "weights_modified": false,
+    "intervention_active": false,
+    "CPU_audit_is_not_inference_validation": true
+  },
+  "checkpoint": {
+    "repository": "XiaomiMiMo/MiMo-V2.6-Pro-MOPD",
+    "revision": "adea8e2c5373181e5a973fa1ecb343cb31af214b",
+    "download_bytes": 573489510171,
+    "additional_quantization": false,
+    "additional_pruning": false
+  },
+  "environment": {
+    "python": "3.12",
+    "sglang": "0.5.19",
+    "torch": "2.13.0+cu130",
+    "transformers_revision": "f324707307757d9c0b8dac1c4462eceff911fa2f",
+    "tokenizers": "0.23.1",
+    "flashinfer-python": "0.6.18",
+    "sglang-kernel": "0.4.6.post1",
+    "flash-attn-4": "4.0.0b19",
+    "triton": "3.7.1",
+    "declared_metadata_deviations": [
+      "sglang requires transformers==5.12.1; pinned vendor environment uses 5.18.0.dev0",
+      "sglang requires tokenizers==0.22.2; pinned Transformers requires 0.23.1"
+    ]
+  },
+  "connection": {
+    "bind": "127.0.0.1",
+    "port": 30000,
+    "access": "SSH forwarding to local chat backend; do not expose an unauthenticated public inference endpoint.",
+    "ssh_key_ready": false
+  },
+  "paid_resource_launch_allowed": false,
+  "remaining_gpu_validation": [
+    "weight load and GPU kernel compilation",
+    "text and image inference",
+    "video and audio inference",
+    "capability comparison with intervention off/on"
+  ]
+}
