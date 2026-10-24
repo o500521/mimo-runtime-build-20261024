@@ -66,7 +66,7 @@
     "bind": "127.0.0.1",
     "port": 30000,
     "access": "SSH forwarding to local chat backend; do not expose an unauthenticated public inference endpoint.",
-    "ssh_key_ready": false
+    "ssh_key_ready": true
   },
   "paid_resource_launch_allowed": false,
   "remaining_gpu_validation": [
@@ -76,8 +76,8 @@
     "capability comparison with intervention off/on"
   ],
   "container": {
-    "image": "ghcr.io/o500521/mimo-runtime-build-20261024:blackfrost-d78419fc",
-    "image_validation": "pending",
+    "image": "ghcr.io/o500521/mimo-runtime-build-20261024@sha256:90847d1411c17fafe42eed2a0b22aaf7baf77072fb8150cb0fdbb5344e2f9dc1",
+    "image_validation": "CPU container tests passed; anonymous manifest access HTTP 200; GPU inference not tested",
     "cuda_toolkit": "13.0.2",
     "cuda_home": "/usr/local/cuda-13.0",
     "gpus": "all",
@@ -88,6 +88,12 @@
     "encrypted_root_bind_mount": false,
     "reason": "Lium encrypted /root cannot be bind-mounted into nested Docker; only public checkpoint weights use plain /workspace storage.",
     "start_command": "sleep infinity",
-    "automatic_model_start": false
+    "automatic_model_start": false,
+    "compressed_layer_bytes": 7704858682
+  },
+  "validation_evidence": {
+    "base_run": "https://github.com/o500521/mimo-runtime-build-20261024/actions/runs/40091509914",
+    "runtime_run": "https://github.com/o500521/mimo-runtime-build-20261024/actions/runs/40092497210",
+    "static_audit_run": "https://github.com/o500521/mimo-runtime-build-20261024/actions/runs/40092617732"
   }
 }
