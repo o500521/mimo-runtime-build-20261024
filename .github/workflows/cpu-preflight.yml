@@ -1,0 +1,86 @@
+name: CPU runtime preflight
+on:
+  push:
+    paths: [".github/workflows/cpu-preflight.yml"]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: cpu-preflight
+  cancel-in-progress: true
+jobs:
+  cpu-install:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    env:
+      PIP_DISABLE_PIP_VERSION_CHECK: "1"
+      PIP_NO_CACHE_DIR: "1"
+      HF_HUB_DISABLE_TELEMETRY: "1"
+    steps:
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Prepare isolated CPU environment
+        run: |
+          set -euo pipefail
+          uname -a
+          df -h /
+          test "$GITHUB_ACTIONS" = true
+          sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc
+          df -h /
+          python -m venv /tmp/mimo-env
+          /tmp/mimo-env/bin/python -m pip install --upgrade pip
+      - name: Install public inference dependencies
+        run: |
+          /tmp/mimo-env/bin/python -m pip install --only-binary=:all: sglang==0.5.19 torch==2.13.0 flashinfer-python==0.6.18 sglang-kernel==0.4.6.post1 flash-attn-4==4.0.0b19 triton==3.7.1 av==16.1.0 pillow soundfile
+      - name: Validate standard dependency consistency
+        run: /tmp/mimo-env/bin/python -m pip check
+      - name: Install the published Transformers source revision
+        run: |
+          # Explicit isolated dependency override; CPU checks must pass.
+          /tmp/mimo-env/bin/python -m pip install --no-deps "https://github.com/huggingface/transformers/archive/f324707307757d9c0b8dac1c4462eceff911fa2f.zip"
+      - name: CPU imports and image preprocessing
+        run: |
+          /tmp/mimo-env/bin/python - <<'PY'
+          import importlib, json, os, sys
+          results=[]
+          for name in ['torch','sglang','transformers','flashinfer','PIL','av','soundfile','torchaudio','torchvision']:
+              try:
+                  m=importlib.import_module(name)
+                  results.append(dict(check='import '+name,ok=True,version=getattr(m,'__version__',None)))
+              except Exception as e:
+                  results.append(dict(check='import '+name,ok=False,error=str(e)))
+          try:
+              import torch
+              assert torch.__version__=='2.13.0+cu130',torch.__version__
+              assert not torch.cuda.is_available(),'Expected CPU-only runner'
+              from transformers import AutoConfig, AutoTokenizer, AutoProcessor
+              repo='XiaomiMiMo/MiMo-V2.6-Pro-MOPD'
+              rev='adea8e2c5373181e5a973fa1ecb343cb31af214b'
+              cfg=AutoConfig.from_pretrained(repo,revision=rev,trust_remote_code=False)
+              results.append(dict(check='pinned config',ok=True,model_type=cfg.model_type))
+              tok=AutoTokenizer.from_pretrained(repo,revision=rev,trust_remote_code=False)
+              ids=tok.encode('A short CPU tokenizer test.',add_special_tokens=False)
+              assert ids
+              results.append(dict(check='tokenizer',ok=True,tokens=len(ids)))
+              proc=AutoProcessor.from_pretrained(repo,revision=rev,trust_remote_code=False)
+              from PIL import Image
+              ip=getattr(proc,'image_processor',None)
+              if ip is None: raise RuntimeError('No image_processor exposed')
+              batch=ip(images=Image.new('RGB',(128,128),'blue'),return_tensors='pt')
+              results.append(dict(check='image preprocessing',ok=True,keys=list(batch.keys())))
+          except Exception as e:
+              results.append(dict(check='checkpoint CPU checks',ok=False,error=str(e)))
+          text=json.dumps(results,indent=2)
+          print(text)
+          with open(os.environ['GITHUB_STEP_SUMMARY'],'a') as f:
+              print('## CPU checks (not GPU inference)',text,file=f)
+          sys.exit(0 if all(r['ok'] for r in results) else 1)
+          PY
+      - name: Record resolved environment
+        if: always()
+        run: |
+          echo '## Resolved dependencies' >> "$GITHUB_STEP_SUMMARY"
+          /tmp/mimo-env/bin/python -m pip freeze >> "$GITHUB_STEP_SUMMARY"
+          /tmp/mimo-env/bin/python -m pip check || true
+          echo 'No GPU rented; no model weights downloaded; no intervention installed or enabled.' >> "$GITHUB_STEP_SUMMARY"
