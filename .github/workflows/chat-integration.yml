@@ -1,0 +1,36 @@
+name: Free mock chat integration
+on:
+  push:
+    paths: ["deployment/**", ".github/workflows/chat-integration.yml"]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  mock-e2e:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install browser testing tools on free cloud CPU only
+        run: |
+          python -m pip install playwright==1.64.1
+          python -m playwright install --with-deps chromium
+      - name: Check prepared script syntax and non-executing plan
+        run: |
+          python -m compileall -q deployment
+          bash -n deployment/bootstrap.sh
+          python deployment/runtime_session.py --help
+          python deployment/gpu_smoke.py --help
+          python deployment/runtime_session.py plan
+      - name: Test actual chat source with a mock local model
+        run: python deployment/integration_test.py
+      - name: Summarize actual result and limits
+        if: always()
+        run: |
+          echo 'MOCK-ONLY transport validation. No weights, GPU, real SSH connection, paid API call, rental or top-up.' >> "$GITHUB_STEP_SUMMARY"
+          if test -f integration-results.json; then cat integration-results.json >> "$GITHUB_STEP_SUMMARY"; fi
