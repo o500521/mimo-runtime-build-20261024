@@ -1,7 +1,7 @@
 name: Blackfrost static release audit
 on:
   push:
-    paths: [".github/workflows/blackfrost-audit.yml"]
+    paths: [".github/workflows/blackfrost-audit.yml", "deployment/bootstrap.sh", "deployment/boot-profile.json"]
   workflow_dispatch:
 permissions:
   contents: read
@@ -43,4 +43,27 @@ jobs:
           result={'release_revision':revision,'file_checks':results,'launch_shell_syntax':'passed','model_weights_downloaded':False,'gpu_rented':False,'intervention_executed':False,'warning':'Static audit only; not model inference or capability validation.'}
           text=json.dumps(result,indent=2);print(text)
           with open(os.environ['GITHUB_STEP_SUMMARY'],'a') as f:print('## Pinned Blackfrost release static audit',text,file=f)
+          PY
+      - name: Validate boot configuration and approval guard without GPUs
+        run: |
+          set -euo pipefail
+          origin="https://raw.githubusercontent.com/o500521/mimo-runtime-build-20261024/$GITHUB_SHA/deployment"
+          curl -fsSL "$origin/bootstrap.sh" -o /tmp/bootstrap.sh
+          curl -fsSL "$origin/boot-profile.json" -o /tmp/boot-profile.json
+          bash -n /tmp/bootstrap.sh
+          set +e
+          env -u USER_APPROVED_GPU_START bash /tmp/bootstrap.sh >/tmp/guard.log 2>&1
+          code=$?
+          set -e
+          cat /tmp/guard.log
+          test "$code" -eq 2
+          python - <<'PY'
+          import json
+          p=json.load(open('/tmp/boot-profile.json'))
+          assert p['hardware']['gpus']==p['hardware']['tensor_parallel']==8
+          assert p['execution_enabled'] is False and p['paid_resource_launch_allowed'] is False
+          assert p['budget']['additional_topup_authorized'] is False
+          assert p['checkpoint']['revision']=='adea8e2c5373181e5a973fa1ecb343cb31af214b'
+          assert p['runtime']['revision']=='d78419fc559d20a1546083b4b099e7aca7cbfab6'
+          print('PASS: configuration, shell syntax and refusal to run without explicit approval')
           PY
