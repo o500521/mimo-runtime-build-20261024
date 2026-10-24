@@ -1,10 +1,10 @@
-name: CPU runtime preflight
-on:
+ㄨㄛ我ㄉㄜon:
   push:
     paths: [".github/workflows/cpu-preflight.yml"]
   workflow_dispatch:
 permissions:
   contents: read
+  packages: write
 concurrency:
   group: cpu-preflight
   cancel-in-progress: true
@@ -27,20 +27,22 @@ jobs:
           df -h /
           test "$GITHUB_ACTIONS" = true
           df -h /
-          python -m venv /tmp/mimo-env
-          /tmp/mimo-env/bin/python -m pip install --upgrade pip
+          test ! -e /opt/mimo-env
+          sudo install -d -o "$(id -u)" -g "$(id -g)" /opt/mimo-env
+          python -m venv /opt/mimo-env
+          /opt/mimo-env/bin/python -m pip install --upgrade pip
       - name: Install public inference dependencies
         run: |
-          /tmp/mimo-env/bin/python -m pip install --only-binary=:all: --extra-index-url https://pypi.nvidia.com sglang==0.5.19 torch==2.13.0 flashinfer-python==0.6.18 sglang-kernel==0.4.6.post1 flash-attn-4==4.0.0b19 triton==3.7.1 av==16.1.0 pillow soundfile
+          /opt/mimo-env/bin/python -m pip install --report /tmp/base-install-report.json --only-binary=:all: --extra-index-url https://pypi.nvidia.com sglang==0.5.19 torch==2.13.0 flashinfer-python==0.6.18 sglang-kernel==0.4.6.post1 flash-attn-4==4.0.0b19 triton==3.7.1 av==16.1.0 pillow soundfile
       - name: Validate standard dependency consistency
-        run: /tmp/mimo-env/bin/python -m pip check
+        run: /opt/mimo-env/bin/python -m pip check
       - name: Install the published Transformers source revision
         run: |
           # Explicit isolated dependency override; CPU checks must pass.
-          /tmp/mimo-env/bin/python -m pip install --only-binary=tokenizers tokenizers==0.23.1 "https://github.com/huggingface/transformers/archive/f324707307757d9c0b8dac1c4462eceff911fa2f.zip"
+          /opt/mimo-env/bin/python -m pip install --report /tmp/transformers-install-report.json --only-binary=tokenizers tokenizers==0.23.1 "https://github.com/huggingface/transformers/archive/f324707307757d9c0b8dac1c4462eceff911fa2f.zip"
       - name: Audit explicit compatibility overrides
         run: |
-          /tmp/mimo-env/bin/python - <<'PY'
+          /opt/mimo-env/bin/python - <<'PY'
           import subprocess, os, sys
           check=subprocess.run([sys.executable,'-m','pip','check'],capture_output=True,text=True)
           lines=[line for line in check.stdout.splitlines() if line.strip()]
@@ -53,7 +55,7 @@ jobs:
           PY
       - name: CPU imports and image preprocessing
         run: |
-          /tmp/mimo-env/bin/python - <<'PY'
+          cat > /tmp/cpu-smoke.py <<'PY'
           import importlib, json, os, sys
           results=[]
           for name in ['torch','sglang','transformers','flashinfer','PIL','av','soundfile','torchaudio','torchvision']:
@@ -69,13 +71,13 @@ jobs:
               from transformers import AutoConfig, AutoTokenizer, AutoProcessor
               repo='XiaomiMiMo/MiMo-V2.6-Pro-MOPD'
               rev='adea8e2c5373181e5a973fa1ecb343cb31af214b'
-              cfg=AutoConfig.from_pretrained(repo,revision=rev,trust_remote_code=False)
+              cfg=AutoConfig.from_pretrained(repo,revision=rev,code_revision=rev,trust_remote_code=True)
               results.append(dict(check='pinned config',ok=True,model_type=cfg.model_type))
-              tok=AutoTokenizer.from_pretrained(repo,revision=rev,trust_remote_code=False)
+              tok=AutoTokenizer.from_pretrained(repo,revision=rev,config=cfg,trust_remote_code=False)
               ids=tok.encode('A short CPU tokenizer test.',add_special_tokens=False)
               assert ids
               results.append(dict(check='tokenizer',ok=True,tokens=len(ids)))
-              proc=AutoProcessor.from_pretrained(repo,revision=rev,trust_remote_code=False)
+              proc=AutoProcessor.from_pretrained(repo,revision=rev,config=cfg,trust_remote_code=False)
               from PIL import Image
               ip=getattr(proc,'image_processor',None)
               if ip is None: raise RuntimeError('No image_processor exposed')
@@ -85,14 +87,58 @@ jobs:
               results.append(dict(check='checkpoint CPU checks',ok=False,error=str(e)))
           text=json.dumps(results,indent=2)
           print(text)
-          with open(os.environ['GITHUB_STEP_SUMMARY'],'a') as f:
-              print('## CPU checks (not GPU inference)',text,file=f)
+          summary=os.environ.get('GITHUB_STEP_SUMMARY')
+          if summary:
+              with open(summary,'a') as f:
+                  print('## CPU checks (not GPU inference)',text,file=f)
           sys.exit(0 if all(r['ok'] for r in results) else 1)
           PY
+          /opt/mimo-env/bin/python /tmp/cpu-smoke.py
+      - name: Package the tested environment into a reusable image
+        run: |
+          set -euo pipefail
+          context=/tmp/mimo-image-context
+          mkdir -p "$context"
+          prefix=$(python -c 'import sys; print(sys.base_prefix)')
+          cp -a "$prefix" "$context/python"
+          cp -a /opt/mimo-env "$context/env"
+          cp /tmp/cpu-smoke.py "$context/cpu-smoke.py"
+          cp /tmp/base-install-report.json /tmp/transformers-install-report.json "$context/"
+          /opt/mimo-env/bin/python -m pip freeze > "$context/requirements.freeze.txt"
+          cat > "$context/Dockerfile" <<'DOCKER'
+          FROM ubuntu:24.04
+          ARG PYTHON_PREFIX
+          RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends ca-certificates curl git openssh-server libgomp1 libgl1 libglib2.0-0t64 libsndfile1 libffi8 libssl3t64 zlib1g libbz2-1.0 liblzma5 libreadline8t64 libsqlite3-0 libncursesw6 libuuid1 ffmpeg && rm -rf /var/lib/apt/lists/*
+          COPY python/ $PYTHON_PREFIX/
+          COPY env/ /opt/mimo-env/
+          COPY cpu-smoke.py requirements.freeze.txt base-install-report.json transformers-install-report.json /opt/mimo-runtime/
+          ENV PATH=/opt/mimo-env/bin:$PYTHON_PREFIX/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+          ENV LD_LIBRARY_PATH=$PYTHON_PREFIX/lib:/usr/local/nvidia/lib:/usr/local/nvidia/lib64
+          ENV NVIDIA_VISIBLE_DEVICES=all NVIDIA_DRIVER_CAPABILITIES=compute,utility HF_HUB_DISABLE_TELEMETRY=1
+          LABEL org.opencontainers.image.source="https://github.com/o500521/mimo-runtime-build-20261024"
+          LABEL org.opencontainers.image.description="CPU-validated inference base. No weights or intervention enabled."
+          CMD ["sleep","infinity"]
+          DOCKER
+          tag="cpu-$(echo "$GITHUB_SHA" | cut -c1-8)"
+          image="ghcr.io/o500521/mimo-runtime-build-20261024:$tag"
+          echo "$image" > /tmp/final-image-reference.txt
+          docker build --build-arg PYTHON_PREFIX="$prefix" -t "$image" "$context"
+          docker run --rm -e HF_HUB_OFFLINE=1 -v "$HOME/.cache/huggingface:/root/.cache/huggingface:ro" --entrypoint /opt/mimo-env/bin/python "$image" /opt/mimo-runtime/cpu-smoke.py
+      - name: Publish reusable inference image
+        env:
+          GHCR_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+          image=$(cat /tmp/final-image-reference.txt)
+          docker push "$image"
+          echo '## Reusable CPU-validated image' >> "$GITHUB_STEP_SUMMARY"
+          echo "$image" >> "$GITHUB_STEP_SUMMARY"
+          docker image inspect --format '{{json .RepoDigests}}' "$image" >> "$GITHUB_STEP_SUMMARY"
       - name: Record resolved environment
         if: always()
         run: |
           echo '## Resolved dependencies' >> "$GITHUB_STEP_SUMMARY"
-          /tmp/mimo-env/bin/python -m pip freeze >> "$GITHUB_STEP_SUMMARY"
-          /tmp/mimo-env/bin/python -m pip check || true
+          /opt/mimo-env/bin/python -m pip freeze >> "$GITHUB_STEP_SUMMARY"
+          /opt/mimo-env/bin/python -m pip check || true
           echo 'No GPU rented; no model weights downloaded; no intervention installed or enabled.' >> "$GITHUB_STEP_SUMMARY"
