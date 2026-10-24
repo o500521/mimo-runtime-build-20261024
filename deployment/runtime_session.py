@@ -17,7 +17,7 @@ MODEL_DIR = '/workspace/models/MiMo-V2.6-Pro-MOPD'
 
 
 def launch_command():
-    return ['docker', 'run', '--detach', '--name', NAME, '--gpus', 'all',
+    return ['docker', 'run', '--detach', '--rm', '--name', NAME, '--gpus', 'all',
             '--network', 'host', '--shm-size', '32g',
             '--mount', 'type=bind,src=' + MODEL_DIR + ',dst=/models/MiMo-V2.6-Pro-MOPD,readonly',
             '--mount', 'type=bind,src=/workspace/mimo-cache,dst=/cache',
