@@ -74,5 +74,20 @@
     "text and image inference",
     "video and audio inference",
     "capability comparison with intervention off/on"
-  ]
+  ],
+  "container": {
+    "image": "ghcr.io/o500521/mimo-runtime-build-20261024:blackfrost-d78419fc",
+    "image_validation": "pending",
+    "cuda_toolkit": "13.0.2",
+    "cuda_home": "/usr/local/cuda-13.0",
+    "gpus": "all",
+    "shared_memory": "32g",
+    "checkpoint_host_path": "/workspace/models/MiMo-V2.6-Pro-MOPD",
+    "checkpoint_container_path": "/models/MiMo-V2.6-Pro-MOPD",
+    "checkpoint_mount": "read-only",
+    "encrypted_root_bind_mount": false,
+    "reason": "Lium encrypted /root cannot be bind-mounted into nested Docker; only public checkpoint weights use plain /workspace storage.",
+    "start_command": "sleep infinity",
+    "automatic_model_start": false
+  }
 }
