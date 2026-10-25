@@ -1,0 +1,38 @@
+name: Free Linux diagnostic reproduction
+on:
+  push:
+    paths: [".github/workflows/linux-diagnostics.yml"]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  reproduce:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Prepare exact diagnostic source
+        env:
+          DIAGNOSTIC_B64: aW1wb3J0IG9zLCBzeXMsIHRocmVhZGluZywgdGltZSwganNvbiwgZmF1bHRoYW5kbGVyLCBhdGV4aXQKaWYgb3MuZW52aXJvbi5nZXQoIkJMQUNLRlJPU1RfU1RBQ0tfRElBR05PU1RJQ1MiKSA9PSAiMSI6CiAgICAjIE5hdGl2ZSB3YXRjaGRvZyBjYW4gZHVtcCBzdGFja3MgZXZlbiB3aGVuIGFuIGV4dGVuc2lvbiByZXRhaW5zIHRoZSBHSUwuCiAgICBmYXVsdGhhbmRsZXIuZW5hYmxlKGZpbGU9c3lzLnN0ZGVyciwgYWxsX3RocmVhZHM9VHJ1ZSkKICAgIGZhdWx0aGFuZGxlci5kdW1wX3RyYWNlYmFja19sYXRlcigKICAgICAgICBmbG9hdChvcy5lbnZpcm9uLmdldCgiQkxBQ0tGUk9TVF9TVEFDS19JTlRFUlZBTCIsICIxMCIpKSwKICAgICAgICByZXBlYXQ9VHJ1ZSwgZmlsZT1zeXMuc3RkZXJyKQogICAgcHJpbnQoanNvbi5kdW1wcyh7InN0YWdlIjoibmF0aXZlX3N0YWNrX3dhdGNoZG9nX2FjdGl2ZSIsICJwaWQiOm9zLmdldHBpZCgpLAogICAgICAgICJtYWluX3RocmVhZF9oZXgiOmhleCh0aHJlYWRpbmcuZ2V0X2lkZW50KCkpLCAidXRjX2Vwb2NoIjp0aW1lLnRpbWUoKX0pLAogICAgICAgIGZpbGU9c3lzLnN0ZGVyciwgZmx1c2g9VHJ1ZSkKICAgIF9zdGFja19zdG9wID0gdGhyZWFkaW5nLkV2ZW50KCkKICAgIGRlZiBfc2FtcGxlX3B5dGhvbl9zdGFja3MoKToKICAgICAgICB3aGlsZSBub3QgX3N0YWNrX3N0b3Aud2FpdChmbG9hdChvcy5lbnZpcm9uLmdldCgiQkxBQ0tGUk9TVF9TVEFDS19JTlRFUlZBTCIsICIxMCIpKSk6CiAgICAgICAgICAgIHNuYXBzaG90cz1bXQogICAgICAgICAgICBmb3IgdGhyZWFkX2lkLCBmcmFtZSBpbiBzeXMuX2N1cnJlbnRfZnJhbWVzKCkuaXRlbXMoKToKICAgICAgICAgICAgICAgIGlmIHRocmVhZF9pZCA9PSB0aHJlYWRpbmcuZ2V0X2lkZW50KCk6IGNvbnRpbnVlCiAgICAgICAgICAgICAgICBzdGFjaz1bXQogICAgICAgICAgICAgICAgd2hpbGUgZnJhbWUgaXMgbm90IE5vbmUgYW5kIGxlbihzdGFjayk8MzI6CiAgICAgICAgICAgICAgICAgICAgc3RhY2suYXBwZW5kKFtmcmFtZS5mX2NvZGUuY29fZmlsZW5hbWUsZnJhbWUuZl9saW5lbm8sZnJhbWUuZl9jb2RlLmNvX25hbWVdKQogICAgICAgICAgICAgICAgICAgIGZyYW1lPWZyYW1lLmZfYmFjawogICAgICAgICAgICAgICAgc25hcHNob3RzLmFwcGVuZCh7InRocmVhZCI6dGhyZWFkX2lkLCJzdGFjayI6c3RhY2t9KQogICAgICAgICAgICBwcmludChqc29uLmR1bXBzKHsic3RhZ2UiOiJweXRob25fc3RhY2tfc2FtcGxlIiwicGlkIjpvcy5nZXRwaWQoKSwidXRjX2Vwb2NoIjp0aW1lLnRpbWUoKSwidGhyZWFkcyI6c25hcHNob3RzfSksZmlsZT1zeXMuc3RkZXJyLGZsdXNoPVRydWUpCiAgICBfc3RhY2tfdGhyZWFkID0gdGhyZWFkaW5nLlRocmVhZCh0YXJnZXQ9X3NhbXBsZV9weXRob25fc3RhY2tzLGRhZW1vbj1UcnVlKQogICAgX3N0YWNrX3RocmVhZC5zdGFydCgpCiAgICBkZWYgX3N0b3Bfc3RhY2tfZGlhZ25vc3RpY3MoKToKICAgICAgICBmYXVsdGhhbmRsZXIuY2FuY2VsX2R1bXBfdHJhY2ViYWNrX2xhdGVyKCkKICAgICAgICBfc3RhY2tfc3RvcC5zZXQoKQogICAgICAgIF9zdGFja190aHJlYWQuam9pbih0aW1lb3V0PTIpCiAgICBhdGV4aXQucmVnaXN0ZXIoX3N0b3Bfc3RhY2tfZGlhZ25vc3RpY3MpCiAgICBwcmludCgiQkxBQ0tGUk9TVF9TVEFDS19ESUFHTk9TVElDU19BQ1RJVkUgcGlkPSIgKyBzdHIob3MuZ2V0cGlkKCkpLCBmaWxlPXN5cy5zdGRlcnIsIGZsdXNoPVRydWUpCg==
+        run: |
+          mkdir -p /tmp/diag /tmp/results
+          python3 -c 'import os,base64,pathlib; pathlib.Path("/tmp/diag/sitecustomize.py").write_bytes(base64.b64decode(os.environ["DIAGNOSTIC_B64"]))'
+      - name: Pull pinned runtime without GPUs
+        run: docker pull ghcr.io/o500521/mimo-runtime-build-20261024@sha256:90847d1411c17fafe42eed2a0b22aaf7baf77072fb8150cb0fdbb5344e2f9dc1
+      - name: Compare imports and launch help with diagnostics on and off
+        run: |
+          set +e
+          for mode in 0 1; do
+            timeout 100 docker run --rm --network none -v /tmp/diag:/diag:ro -e PYTHONPATH=/diag -e BLACKFROST_STACK_DIAGNOSTICS=$mode -e BLACKFROST_STACK_INTERVAL=1 --entrypoint python ghcr.io/o500521/mimo-runtime-build-20261024@sha256:90847d1411c17fafe42eed2a0b22aaf7baf77072fb8150cb0fdbb5344e2f9dc1 -c 'import ctypes; ctypes.PyDLL(None).sleep(3); import torch; import sglang.srt.entrypoints.http_server; print("IMPORT_OK", flush=True)' > /tmp/results/import-$mode.log 2>&1
+            echo "import-$mode exit=$?" | tee -a /tmp/results/status.txt
+            timeout 100 docker run --rm --network none -v /tmp/diag:/diag:ro -e PYTHONPATH=/diag -e BLACKFROST_STACK_DIAGNOSTICS=$mode -e BLACKFROST_STACK_INTERVAL=1 --entrypoint python ghcr.io/o500521/mimo-runtime-build-20261024@sha256:90847d1411c17fafe42eed2a0b22aaf7baf77072fb8150cb0fdbb5344e2f9dc1 -m sglang.launch_server --help > /tmp/results/help-$mode.log 2>&1
+            echo "help-$mode exit=$?" | tee -a /tmp/results/status.txt
+          done
+          cat /tmp/results/status.txt >> "$GITHUB_STEP_SUMMARY"
+          for log in /tmp/results/*.log; do echo "$log"; tail -30 "$log"; done
+          ! grep -qE 'exit=[1-9]' /tmp/results/status.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: linux-diagnostic-evidence
+          path: /tmp/results
+          retention-days: 7
