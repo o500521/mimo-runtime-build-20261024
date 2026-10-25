@@ -18,13 +18,17 @@ jobs:
           python3 -c 'import os,base64,pathlib; pathlib.Path("/tmp/diag/sitecustomize.py").write_bytes(base64.b64decode(os.environ["DIAGNOSTIC_B64"]))'
       - name: Pull pinned runtime without GPUs
         run: docker pull ghcr.io/o500521/mimo-runtime-build-20261024@sha256:90847d1411c17fafe42eed2a0b22aaf7baf77072fb8150cb0fdbb5344e2f9dc1
+      - name: Materialize the pinned Blackfrost overlay
+        run: |
+          mkdir -p /tmp/runtime-test
+          docker run --rm -v /tmp/runtime-test:/work --entrypoint python ghcr.io/o500521/mimo-runtime-build-20261024@sha256:90847d1411c17fafe42eed2a0b22aaf7baf77072fb8150cb0fdbb5344e2f9dc1 -c 'from huggingface_hub import snapshot_download; import subprocess,sys; snapshot_download("Blackfrost-AI/MiMo-V2.6-Pro-MOPD-Derisking-Intervention-Runtime",revision="d78419fc559d20a1546083b4b099e7aca7cbfab6",local_dir="/work/runtime"); subprocess.run([sys.executable,"/work/runtime/scripts/verify_package.py","--root","/work/runtime"],check=True); subprocess.run([sys.executable,"/work/runtime/scripts/materialize_overlay.py","--output","/work/overlay"],check=True)'
       - name: Compare imports and launch help with diagnostics on and off
         run: |
           set +e
           for mode in 0 1; do
-            timeout 100 docker run --rm --network none -v /tmp/diag:/diag:ro -e PYTHONPATH=/diag -e BLACKFROST_STACK_DIAGNOSTICS=$mode -e BLACKFROST_STACK_INTERVAL=1 --entrypoint python ghcr.io/o500521/mimo-runtime-build-20261024@sha256:90847d1411c17fafe42eed2a0b22aaf7baf77072fb8150cb0fdbb5344e2f9dc1 -c 'import ctypes; ctypes.PyDLL(None).sleep(3); import torch; import sglang.srt.entrypoints.http_server; print("IMPORT_OK", flush=True)' > /tmp/results/import-$mode.log 2>&1
+            timeout 100 docker run --rm --network none -v /tmp/diag:/diag:ro -v /tmp/runtime-test/overlay:/overlay:ro -e PYTHONPATH=/overlay:/diag -e BLACKFROST_STACK_DIAGNOSTICS=$mode -e BLACKFROST_STACK_INTERVAL=1 --entrypoint python ghcr.io/o500521/mimo-runtime-build-20261024@sha256:90847d1411c17fafe42eed2a0b22aaf7baf77072fb8150cb0fdbb5344e2f9dc1 -c 'import ctypes; ctypes.PyDLL(None).sleep(3); import torch; import sglang.srt.entrypoints.http_server; print("IMPORT_OK", flush=True)' > /tmp/results/import-$mode.log 2>&1
             echo "import-$mode exit=$?" | tee -a /tmp/results/status.txt
-            timeout 100 docker run --rm --network none -v /tmp/diag:/diag:ro -e PYTHONPATH=/diag -e BLACKFROST_STACK_DIAGNOSTICS=$mode -e BLACKFROST_STACK_INTERVAL=1 --entrypoint python ghcr.io/o500521/mimo-runtime-build-20261024@sha256:90847d1411c17fafe42eed2a0b22aaf7baf77072fb8150cb0fdbb5344e2f9dc1 -m sglang.launch_server --help > /tmp/results/help-$mode.log 2>&1
+            timeout 100 docker run --rm --network none -v /tmp/diag:/diag:ro -v /tmp/runtime-test/overlay:/overlay:ro -e PYTHONPATH=/overlay:/diag -e BLACKFROST_STACK_DIAGNOSTICS=$mode -e BLACKFROST_STACK_INTERVAL=1 --entrypoint python ghcr.io/o500521/mimo-runtime-build-20261024@sha256:90847d1411c17fafe42eed2a0b22aaf7baf77072fb8150cb0fdbb5344e2f9dc1 -m sglang.launch_server --help > /tmp/results/help-$mode.log 2>&1
             echo "help-$mode exit=$?" | tee -a /tmp/results/status.txt
           done
           cat /tmp/results/status.txt >> "$GITHUB_STEP_SUMMARY"
