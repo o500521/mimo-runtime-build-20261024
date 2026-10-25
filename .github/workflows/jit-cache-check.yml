@@ -1,0 +1,35 @@
+name: Free pinned JIT cache check
+on:
+  push:
+    paths: [".github/workflows/jit-cache-check.yml"]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Prepare CPU probe
+        env:
+          PROBE_B64: IiIiQ1BVLW9ubHkgQUJJL2NhY2hlIHByb2JlOyBuZXZlciBjbGFpbXMgR1BVIGluZmVyZW5jZSBzdWNjZXNzLiIiIgppbXBvcnQgaGFzaGxpYgppbXBvcnQgaW1wb3J0bGliLm1ldGFkYXRhCmltcG9ydCBqc29uCmltcG9ydCBvcwpmcm9tIHBhdGhsaWIgaW1wb3J0IFBhdGgKaW1wb3J0IHN1YnByb2Nlc3MKaW1wb3J0IHRpbWUKCm9zLmVudmlyb25bJ0ZMQVNISU5GRVJfQ1VEQV9BUkNIX0xJU1QnXSA9ICcxMi4wYScKb3MuZW52aXJvblsnRkxBU0hJTkZFUl9ESVNBQkxFX0pJVCddID0gJzEnCmltcG9ydCB0b3JjaApmcm9tIGZsYXNoaW5mZXIuaml0LmZ1c2VkX21vZSBpbXBvcnQgZ2VuX2N1dGxhc3NfZnVzZWRfbW9lX3NtMTIwX21vZHVsZQpmcm9tIGZsYXNoaW5mZXIuaml0LmZwOF9xdWFudGl6YXRpb24gaW1wb3J0IGdlbl9teGZwOF9xdWFudGl6YXRpb25fc20xMDBfbW9kdWxlCmZyb20gZmxhc2hpbmZlci5qaXQgaW1wb3J0IGVudgoKcmVzdWx0ID0geydncHVfaW5mZXJlbmNlX3Rlc3RlZCc6IEZhbHNlLCAnY3VkYV9hdmFpbGFibGUnOiB0b3JjaC5jdWRhLmlzX2F2YWlsYWJsZSgpLAogICAgICAgICAgJ3ZlcnNpb25zJzoge246IGltcG9ydGxpYi5tZXRhZGF0YS52ZXJzaW9uKG4pIGZvciBuIGluICgnZmxhc2hpbmZlci1weXRob24nLCAnZmxhc2hpbmZlci1qaXQtY2FjaGUnLCAndG9yY2gnKX0sCiAgICAgICAgICAnYW90X2Rpcic6IHN0cihlbnYuRkxBU0hJTkZFUl9BT1RfRElSKSwgJ21vZHVsZXMnOiBbXX0KZm9yIGZhY3RvcnkgaW4gKGdlbl9jdXRsYXNzX2Z1c2VkX21vZV9zbTEyMF9tb2R1bGUsIGdlbl9teGZwOF9xdWFudGl6YXRpb25fc20xMDBfbW9kdWxlKToKICAgIHN0YXJ0ZWQgPSB0aW1lLm1vbm90b25pYygpCiAgICBzcGVjID0gZmFjdG9yeSgpCiAgICBwYXRoID0gc3BlYy5nZXRfbGlicmFyeV9wYXRoKCkKICAgIHJvdyA9IHsnbmFtZSc6IHNwZWMubmFtZSwgJ2FvdCc6IHNwZWMuaXNfYW90LCAnZXhpc3RzJzogcGF0aC5leGlzdHMoKSwgJ3BhdGgnOiBzdHIocGF0aCl9CiAgICBpZiBwYXRoLmV4aXN0cygpOgogICAgICAgIHJvd1snYnl0ZXMnXSA9IHBhdGguc3RhdCgpLnN0X3NpemUKICAgICAgICByb3dbJ3NoYTI1NiddID0gaGFzaGxpYi5maWxlX2RpZ2VzdChwYXRoLm9wZW4oJ3JiJyksICdzaGEyNTYnKS5oZXhkaWdlc3QoKQogICAgICAgIHJvd1snbGRkJ10gPSBzdWJwcm9jZXNzLnJ1bihbJ2xkZCcsIHN0cihwYXRoKV0sIGNhcHR1cmVfb3V0cHV0PVRydWUsIHRleHQ9VHJ1ZSkuc3Rkb3V0CiAgICB0cnk6CiAgICAgICAgIyBKSVQgZGlzYWJsZWQ6IHN1Y2Nlc3MgcHJvdmVzIGFjdHVhbCBiaW5hcnkgcmVzb2x1dGlvbi9sb2FkLCBub3QgcmVjb21waWxhdGlvbi4KICAgICAgICBtb2R1bGUgPSBzcGVjLmJ1aWxkX2FuZF9sb2FkKCkKICAgICAgICByb3dbJ2xvYWRlZF93aXRob3V0X2ppdCddID0gbW9kdWxlIGlzIG5vdCBOb25lCiAgICBleGNlcHQgRXhjZXB0aW9uIGFzIGVycm9yOgogICAgICAgIHJvd1snbG9hZGVkX3dpdGhvdXRfaml0J10gPSBGYWxzZQogICAgICAgIHJvd1snZXJyb3InXSA9IHJlcHIoZXJyb3IpCiAgICByb3dbJ3NlY29uZHMnXSA9IHRpbWUubW9ub3RvbmljKCkgLSBzdGFydGVkCiAgICByZXN1bHRbJ21vZHVsZXMnXS5hcHBlbmQocm93KQogICAgcHJpbnQoanNvbi5kdW1wcyhyb3cpLCBmbHVzaD1UcnVlKQpQYXRoKCcvcmVzdWx0cy9qaXQtY2FjaGUtcHJvYmUuanNvbicpLndyaXRlX3RleHQoanNvbi5kdW1wcyhyZXN1bHQsIGluZGVudD0yKSkKYXNzZXJ0IGFsbChyWydhb3QnXSBhbmQgclsnbG9hZGVkX3dpdGhvdXRfaml0J10gZm9yIHIgaW4gcmVzdWx0Wydtb2R1bGVzJ10pLCByZXN1bHQKcHJpbnQoJ0NQVV9DQUNIRV9MT0FEX1BBU1NFRF9OT1RfR1BVX0lORkVSRU5DRScsIGZsdXNoPVRydWUpCg==
+        run: |
+          mkdir -p /tmp/cache-probe /tmp/cache-results
+          chmod 777 /tmp/cache-results
+          python3 -c 'import os,base64,pathlib; pathlib.Path("/tmp/cache-probe/probe.py").write_bytes(base64.b64decode(os.environ["PROBE_B64"]))'
+      - name: Download and verify official pinned cache
+        run: |
+          curl -fL --retry 2 'https://github.com/flashinfer-ai/flashinfer/releases/download/v0.6.18/flashinfer_jit_cache-0.6.18%2Bcu130-cp39-abi3-manylinux_2_28_x86_64.whl' -o '/tmp/cache-probe/flashinfer_jit_cache-0.6.18+cu130-cp39-abi3-manylinux_2_28_x86_64.whl'
+          echo '428a47a554ade93c30a818e142b781df58582bf056bab94611fb4c906cc366bf  /tmp/cache-probe/flashinfer_jit_cache-0.6.18+cu130-cp39-abi3-manylinux_2_28_x86_64.whl' | sha256sum -c -
+      - name: Pull fixed image
+        run: docker pull ghcr.io/o500521/mimo-runtime-build-20261024@sha256:90847d1411c17fafe42eed2a0b22aaf7baf77072fb8150cb0fdbb5344e2f9dc1
+      - name: Load SM120 MoE and quantization binaries with JIT disabled
+        run: |
+          set -o pipefail
+          timeout 240 docker run --rm -v /tmp/cache-probe:/probe:ro -v /tmp/cache-results:/results --entrypoint /bin/bash ghcr.io/o500521/mimo-runtime-build-20261024@sha256:90847d1411c17fafe42eed2a0b22aaf7baf77072fb8150cb0fdbb5344e2f9dc1 -c 'python -m pip install --no-deps /probe/flashinfer_jit_cache-0.6.18+cu130-cp39-abi3-manylinux_2_28_x86_64.whl && python /probe/probe.py' 2>&1 | tee /tmp/cache-results/probe.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: jit-cache-evidence
+          path: /tmp/cache-results
+          retention-days: 7
